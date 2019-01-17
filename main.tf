@@ -2,38 +2,28 @@ terraform {
   required_version = ">= 0.10.0"
 }
 
+locals {
+  application_name        = "${var.application_name}"
+  application_environment = "${coalesce(var.application_environment, terraform.workspace)}"
+
+  source_path           = "${var.source_path}"
+  handler               = "${var.handler}"
+  runtime               = "${var.runtime}"
+  timeout               = "${var.timeout}"
+  memory_size           = "${var.memory_size}"
+  environment_variables = "${var.environment_variables}"
+  tags                  = "${var.tags}"
+}
+
 # Lambda
 data "archive_file" "lambda_archive" {
   type        = "zip"
-  source_file = "${var.lambda_source_path}"
-  output_path = "${var.lambda_source_path}.zip"
+  source_file = "${local.source_path}"
+  output_path = "${local.source_path}.zip"
 }
 
 data "template_file" "lambda_template" {
-  template = "${var.lambda_handler}"
-}
-
-resource "aws_lambda_function" "lambda" {
-  function_name    = "${data.template_file.lambda_template.rendered}"
-  filename         = "${data.archive_file.lambda_archive.output_path}"
-  source_code_hash = "${data.archive_file.lambda_archive.output_base64sha256}"
-  runtime          = "${var.lambda_runtime}"
-  role             = "${aws_iam_role.lambda_role.arn}"
-  handler          = "${var.lambda_handler}"
-  timeout          = "${var.lambda_timeout}"
-  memory_size      = "${var.lambda_memory_size}"
-
-  environment {
-    variables = "${var.lambda_environment_variables}"
-  }
-
-  tags = "${var.tags}"
-}
-
-# IAM
-resource "aws_iam_role" "lambda_role" {
-  name               = "${data.template_file.lambda_template.rendered}"
-  assume_role_policy = "${data.aws_iam_policy_document.lambda_assume_role.json}"
+  template = "${local.handler}"
 }
 
 data "aws_iam_policy_document" "lambda_assume_role" {
@@ -55,14 +45,29 @@ data "aws_iam_policy_document" "lambda_assume_role" {
   }
 }
 
-# Cloudwatch
-resource "aws_iam_policy" "lambda_cloudwatch" {
-  name        = "${aws_lambda_function.lambda.function_name}"
-  description = "Cloudwatch logging policy"
-
-  policy = "${data.aws_iam_policy_document.lambda_cloudwatch_policy.json}"
+resource "aws_iam_role" "lambda_role" {
+  name               = "${local.application_name}_${data.template_file.lambda_template.rendered}_${local.application_environment}"
+  assume_role_policy = "${data.aws_iam_policy_document.lambda_assume_role.json}"
 }
 
+resource "aws_lambda_function" "lambda" {
+  function_name    = "${local.application_name}_${data.template_file.lambda_template.rendered}_${local.application_environment}"
+  filename         = "${data.archive_file.lambda_archive.output_path}"
+  source_code_hash = "${data.archive_file.lambda_archive.output_base64sha256}"
+  runtime          = "${local.runtime}"
+  role             = "${aws_iam_role.lambda_role.arn}"
+  handler          = "${local.handler}"
+  timeout          = "${local.timeout}"
+  memory_size      = "${local.memory_size}"
+
+  environment {
+    variables = "${local.environment_variables}"
+  }
+
+  tags = "${local.tags}"
+}
+
+# CloudWatch
 data "aws_iam_policy_document" "lambda_cloudwatch_policy" {
   statement {
     actions = [
@@ -76,13 +81,14 @@ data "aws_iam_policy_document" "lambda_cloudwatch_policy" {
   }
 }
 
-resource "aws_iam_policy_attachment" "lambda_cloudwatch" {
-  name       = "${aws_lambda_function.lambda.function_name}"
-  roles      = ["${aws_iam_role.lambda_role.id}"]
-  policy_arn = "${aws_iam_policy.lambda_cloudwatch.arn}"
+resource "aws_iam_role_policy" "lambda_cloudwatch" {
+  name   = "shortlink_cloudwatch_access"
+  role   = "${aws_iam_role.lambda_role.id}"
+  policy = "${data.aws_iam_policy_document.lambda_cloudwatch_policy.json}"
 }
 
 resource "aws_cloudwatch_log_group" "lambda_cloudwatch" {
-  name = "/aws/lambda/${aws_lambda_function.lambda.function_name}"
-  tags = "${var.tags}"
+  name              = "/aws/lambda/${aws_lambda_function.lambda.function_name}"
+  retention_in_days = 30
+  tags              = "${local.tags}"
 }
