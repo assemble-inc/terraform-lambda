@@ -35,3 +35,11 @@ variable "environment_variables" {
 variable "tags" {
   type = "map"
 }
+
+variable "vpc_subnet_ids" {
+  type = "list"
+}
+
+variable "vpc_security_group_ids" {
+  type = "list"
+}
