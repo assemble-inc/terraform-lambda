@@ -37,9 +37,11 @@ variable "tags" {
 }
 
 variable "vpc_subnet_ids" {
-  type = "list"
+  type    = "list"
+  default = []
 }
 
 variable "vpc_security_group_ids" {
-  type = "list"
+  type    = "list"
+  default = []
 }

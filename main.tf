@@ -69,8 +69,8 @@ resource "aws_lambda_function" "lambda" {
   tags = "${local.tags}"
 
   vpc_config {
-    subnet_ids         = "${local.vpc_subnet_ids}"
-    security_group_ids = "${local.vpc_security_group_ids}"
+    subnet_ids         = ["${local.vpc_subnet_ids}"]
+    security_group_ids = ["${local.vpc_security_group_ids}"]
   }
 }
 
