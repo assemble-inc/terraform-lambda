@@ -118,3 +118,27 @@ resource "aws_iam_role_policy" "lambda_vpc" {
   role   = "${aws_iam_role.lambda_role.id}"
   policy = "${data.aws_iam_policy_document.lambda_vpc_policy.json}"
 }
+
+resource "aws_cloudwatch_event_rule" "keep_warm" {
+  name = "${local.application_name}_${local.handler}_${local.application_environment}"
+
+  depends_on = [
+    "aws_lambda_function.lambda",
+  ]
+
+  schedule_expression = "rate(1 minute)"
+}
+
+resource "aws_cloudwatch_event_target" "lambda" {
+  target_id = "lambda"                                      // Worked for me after I added `target_id`
+  rule      = "${aws_cloudwatch_event_rule.keep_warm.name}"
+  arn       = "${aws_lambda_function.lambda.arn}"
+}
+
+resource "aws_lambda_permission" "lambda_keep_warm_permission" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.lambda.function_name}"
+  principal     = "events.amazonaws.com"
+  source_arn    = "${aws_cloudwatch_event_rule.keep_warm.arn}"
+}
