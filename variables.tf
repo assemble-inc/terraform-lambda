@@ -7,7 +7,7 @@ variable "application_environment" {
   default = ""
 }
 
-variable "source_path" {
+variable "file_name" {
   type = "string"
 }
 

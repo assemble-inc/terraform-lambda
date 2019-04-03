@@ -6,7 +6,7 @@ locals {
   application_name        = "${var.application_name}"
   application_environment = "${coalesce(var.application_environment, terraform.workspace)}"
 
-  source_path            = "${var.source_path}"
+  file_name              = "${local.file_name}"
   handler                = "${var.handler}"
   runtime                = "${var.runtime}"
   timeout                = "${var.timeout}"
@@ -18,11 +18,6 @@ locals {
 }
 
 # Lambda
-data "archive_file" "lambda_archive" {
-  type        = "zip"
-  source_file = "${local.source_path}"
-  output_path = "${local.source_path}.zip"
-}
 
 data "template_file" "lambda_template" {
   template = "${local.handler}"
@@ -53,14 +48,13 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_lambda_function" "lambda" {
-  function_name    = "${local.application_name}_${data.template_file.lambda_template.rendered}_${local.application_environment}"
-  filename         = "${data.archive_file.lambda_archive.output_path}"
-  source_code_hash = "${data.archive_file.lambda_archive.output_base64sha256}"
-  runtime          = "${local.runtime}"
-  role             = "${aws_iam_role.lambda_role.arn}"
-  handler          = "${local.handler}"
-  timeout          = "${local.timeout}"
-  memory_size      = "${local.memory_size}"
+  function_name = "${local.application_name}_${data.template_file.lambda_template.rendered}_${local.application_environment}"
+  filename      = "${local.file_name}"
+  runtime       = "${local.runtime}"
+  role          = "${aws_iam_role.lambda_role.arn}"
+  handler       = "${local.handler}"
+  timeout       = "${local.timeout}"
+  memory_size   = "${local.memory_size}"
 
   environment {
     variables = "${local.environment_variables}"
