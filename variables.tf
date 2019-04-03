@@ -7,6 +7,10 @@ variable "application_environment" {
   default = ""
 }
 
+variable "name" {
+  type = "string"
+}
+
 variable "file_name" {
   type = "string"
 }

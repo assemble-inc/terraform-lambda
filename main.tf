@@ -6,6 +6,8 @@ locals {
   application_name        = "${var.application_name}"
   application_environment = "${coalesce(var.application_environment, terraform.workspace)}"
 
+  name = "${var.name}"
+
   file_name              = "${local.file_name}"
   handler                = "${var.handler}"
   runtime                = "${var.runtime}"
@@ -20,7 +22,7 @@ locals {
 # Lambda
 
 data "template_file" "lambda_template" {
-  template = "${local.handler}"
+  template = "${local.name}"
 }
 
 data "aws_iam_policy_document" "lambda_assume_role" {
@@ -114,7 +116,7 @@ resource "aws_iam_role_policy" "lambda_vpc" {
 }
 
 resource "aws_cloudwatch_event_rule" "keep_warm" {
-  name = "${local.application_name}_${local.handler}_${local.application_environment}"
+  name = "${local.application_name}_${local.name}_${local.application_environment}"
 
   depends_on = [
     "aws_lambda_function.lambda",
